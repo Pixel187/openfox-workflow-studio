@@ -91,13 +91,13 @@ def _resolve(workflow_id: str):
 
 
 @router.get("/ollama/models")
-async def list_models() -> dict[str, list[str]]:
+async def list_models() -> dict[str, Any]:
     """Liste les modèles Ollama disponibles (proxie ollama_client)."""
     try:
         models = _ollama.list_models()
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    return {"models": models}
+    return {"models": models, "default_model": config.settings.ollama_model}
 
 
 @router.post("/agent/propose")
@@ -121,7 +121,9 @@ async def propose(req: ProposeRequest) -> dict[str, Any]:
 
     if not result.success:
         status = 422
-        detail = result.error or "; ".join(result.validation_errors)
+        parts = [result.error] if result.error else []
+        parts.extend(result.validation_errors)
+        detail = "; ".join(parts) if parts else "Proposition invalide"
         raise HTTPException(status_code=status, detail=detail)
 
     proposal_id = uuid.uuid4().hex

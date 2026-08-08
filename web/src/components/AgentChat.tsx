@@ -22,7 +22,10 @@ export default function AgentChat({ onApplied }: AgentChatProps) {
       .getModels()
       .then((r) => {
         setModels(r.models);
-        if (r.models.length > 0) setModel(r.models[0]);
+        const preferred = r.default_model
+          ? r.models.find((m) => m === r.default_model || m.startsWith(`${r.default_model}:`))
+          : undefined;
+        setModel(preferred ?? r.models[0] ?? "");
       })
       .catch(() => setModels([]));
   }, []);

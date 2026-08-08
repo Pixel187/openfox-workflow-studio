@@ -148,7 +148,7 @@ export const api = {
   updateAgentTemplate: (id: string, payload: AgentTemplatePayload) =>
     request<AgentTemplate>(`/api/agent-base/${id}`, "PUT", payload),
   deleteAgentTemplate: (id: string) => request<void>(`/api/agent-base/${id}`, "DELETE"),
-  getModels: () => request<{ models: string[] }>("/api/ollama/models"),
+  getModels: () => request<{ models: string[]; default_model?: string }>("/api/ollama/models"),
   propose: (payload: {
     workflow_id: string;
     scope: string;

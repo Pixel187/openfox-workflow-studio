@@ -103,6 +103,33 @@ def test_get_models_returns_list(client: TestClient, fake_agent) -> None:
     response = client.get("/api/ollama/models")
     assert response.status_code == 200
     assert "mistral-small3.2" in response.json()["models"]
+    assert response.json()["default_model"] == "mistral-small3.2"
+
+
+def test_propose_invalid_returns_validation_errors(client: TestClient, monkeypatch) -> None:
+    """Une proposition invalide expose les erreurs de validation (P0)."""
+    import app.routes_agent as routes_agent
+    from app.agent_proposer import Proposal
+
+    _create_demo(client)
+    fake = _FakeProposer(
+        result=Proposal(
+            success=False,
+            proposed=None,
+            validation_errors=["goto 's99' vers une étape inconnue", "phase 'x' inconnue"],
+            error="Proposition invalide",
+        )
+    )
+    monkeypatch.setattr(routes_agent, "_proposer", fake)
+    monkeypatch.setattr(routes_agent, "_ollama", _FakeOllama())
+
+    response = client.post(
+        "/api/agent/propose",
+        json={"workflow_id": "demo", "scope": "workflow", "instruction": "Ajoute"},
+    )
+    assert response.status_code == 422
+    assert "goto 's99'" in response.json()["detail"]
+    assert "phase 'x'" in response.json()["detail"]
 
 
 def test_propose_returns_proposal_id(client: TestClient, fake_agent) -> None:

@@ -82,4 +82,24 @@ describe("AgentChat", () => {
     fireEvent.click(screen.getByRole("button", { name: "Proposer" }));
     await waitFor(() => expect(screen.getByText(/Ollama indisponible/)).toBeInTheDocument());
   });
+
+  it("sélectionne le modèle par défaut du backend quand il est disponible", async () => {
+    vi.spyOn(api, "getModels").mockResolvedValue({
+      models: ["rafw007/Qwen3.6-35B:latest", "mistral-small3.2:latest", "qwen2.5:32b"],
+      default_model: "mistral-small3.2",
+    });
+    render(<AgentChat onApplied={() => {}} />);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Modèle/)).toHaveValue("mistral-small3.2:latest"),
+    );
+  });
+
+  it("replie sur le premier modèle si le défaut est absent", async () => {
+    vi.spyOn(api, "getModels").mockResolvedValue({
+      models: ["qwen2.5:32b", "gemma4:12b"],
+      default_model: "mistral-small3.2",
+    });
+    render(<AgentChat onApplied={() => {}} />);
+    await waitFor(() => expect(screen.getByLabelText(/Modèle/)).toHaveValue("qwen2.5:32b"));
+  });
 });
