@@ -19,8 +19,7 @@ Backend FastAPI (Python)
         └── ollama_client.py    — client Ollama
 ```
 
-Le studio réutilise deux modules de la racine `openfox` (ajoutée au `sys.path`
-par `app/__init__.py`) :
+Le studio embarque deux modules du runtime OpenFox (copiés à la racine du dépôt) :
 
 - `workflow_codec.py` — codec des définitions de workflow
 - `workflow_generator.py` — validation des workflows (anti-code, reachability)
