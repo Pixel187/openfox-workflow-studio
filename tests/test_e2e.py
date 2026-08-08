@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import zipfile
 from pathlib import Path
 
@@ -22,8 +23,11 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
-REAL_WORKFLOW = (
-    Path.home() / "AppData" / "Roaming" / "openfox" / "workflows" / "build-and-verify.workflow.json"
+REAL_WORKFLOW = Path(
+    os.environ.get(
+        "OPENFOX_E2E_WORKFLOW",
+        str(Path.home() / "AppData" / "Roaming" / "openfox" / "workflows" / "build-and-verify.workflow.json"),
+    )
 )
 WORKFLOW_ID = "build-and-verify"
 
