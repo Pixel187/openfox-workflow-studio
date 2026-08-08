@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     # Client Ollama
-    ollama_base_url: str = "http://192.168.178.10:11434"
+    ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "mistral-small3.2"
 
     # Répertoires de données

@@ -94,7 +94,7 @@ Variables d'environnement (ou fichier `.env`) :
 
 | Variable | Défaut | Description |
 |---|---|---|
-| `OLLAMA_BASE_URL` | `http://192.168.178.10:11434` | URL du serveur Ollama |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | URL du serveur Ollama |
 | `OLLAMA_MODEL` | `mistral-small3.2` | Modèle par défaut |
 | `WS_DIR` | `%APPDATA%\openfox\workflows` | Répertoire des workflows |
 | `PORT` | `8765` | Port du backend |
