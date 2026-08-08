@@ -23,7 +23,14 @@ export default function App() {
   return (
     <div className="h-full">
       {openId ? (
-        <WorkflowEditor workflowId={openId} onBack={back} onSaved={() => setRefreshKey((k) => k + 1)} />
+        <WorkflowEditor
+          workflowId={openId}
+          onBack={back}
+          onSaved={() => {
+            if (openId) loadWorkflow(openId);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
       ) : (
         <WorkflowList onOpen={open} refreshKey={refreshKey} />
       )}
