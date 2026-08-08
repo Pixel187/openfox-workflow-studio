@@ -21,9 +21,8 @@ from pathlib import Path
 
 APP_DATA = Path(os.environ.get("APPDATA", ""))
 WORKFLOWS_DIR = APP_DATA / "openfox" / "workflows"
-BEST_PRACTICES_FILE = (
-    Path.home() / "openfox" / "Livre_IA_et_Droit" / "BONNES_PRATIQUES_WORKFLOW.md"
-)
+# Guide des bonnes pratiques embarqué dans le dépôt (docs/).
+BEST_PRACTICES_FILE = Path(__file__).resolve().parent / "docs" / "BONNES_PRATIQUES_WORKFLOW.md"
 OLLAMA_URL = "http://localhost:11434/v1/chat/completions"
 DEFAULT_MODEL = "mistral-small3.2"
 
