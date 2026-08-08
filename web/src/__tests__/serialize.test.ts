@@ -91,6 +91,24 @@ describe("serializeWorkflow", () => {
     expect(nodes).toHaveLength(0);
     expect(edges).toHaveLength(0);
   });
+
+  it("utilise step.position quand elle est présente", () => {
+    const wf = makeWorkflow([
+      {
+        id: "s1",
+        name: "Build",
+        type: "agent",
+        phase: "build",
+        agentId: "builder",
+        prompt: "x",
+        position: { x: 999, y: 777 },
+        transitions: [{ goto: "$done" }],
+      },
+    ]);
+    const { nodes } = serializeWorkflow(wf);
+    const s1 = nodes.find((n) => n.id === "s1")!;
+    expect(s1.position).toEqual({ x: 999, y: 777 });
+  });
 });
 
 describe("phaseColor", () => {

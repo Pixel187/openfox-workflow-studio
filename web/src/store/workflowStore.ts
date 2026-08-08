@@ -14,6 +14,7 @@ interface WorkflowState {
   loadWorkflow: (id: string) => Promise<void>;
   setSelectedStep: (stepId: string | null) => void;
   updateStep: (stepId: string, patch: Partial<Step>) => void;
+  updateNodePositions: (changes: { id: string; position: { x: number; y: number } }[]) => void;
   addStep: (step: Step) => void;
   removeStep: (stepId: string) => void;
   duplicateStep: (stepId: string) => void;
@@ -39,13 +40,44 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({ loading: true, error: "" });
     try {
       const { workflow, etag } = await api.getWorkflowWithEtag(id);
-      set({ workflow, etag, loading: false, dirty: false, validation: null, selectedStepId: null });
+      let loaded = workflow;
+      try {
+        const layout = (await api.getLayout(id)) as {
+          nodes?: { id: string; position: { x: number; y: number } }[];
+        };
+        const positions = new Map((layout.nodes ?? []).map((n) => [n.id, n.position]));
+        if (positions.size > 0) {
+          loaded = {
+            ...workflow,
+            steps: workflow.steps.map((s) =>
+              positions.has(s.id) ? { ...s, position: positions.get(s.id) } : s,
+            ),
+          };
+        }
+      } catch {
+        /* pas de layout sauvegardé : positions par défaut */
+      }
+      set({ workflow: loaded, etag, loading: false, dirty: false, validation: null, selectedStepId: null });
     } catch (err) {
       set({ loading: false, error: (err as Error).message });
     }
   },
 
   setSelectedStep: (stepId) => set({ selectedStepId: stepId }),
+
+  updateNodePositions: (changes) => {
+    const wf = get().workflow;
+    if (!wf) return;
+    const positions = new Map(changes.map((c) => [c.id, c.position]));
+    set({
+      workflow: {
+        ...wf,
+        steps: wf.steps.map((s) =>
+          positions.has(s.id) ? { ...s, position: positions.get(s.id) } : s,
+        ),
+      },
+    });
+  },
 
   updateStep: (stepId, patch) => {
     const wf = get().workflow;

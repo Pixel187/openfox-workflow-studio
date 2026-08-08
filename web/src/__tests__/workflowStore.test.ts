@@ -58,6 +58,42 @@ describe("workflowStore", () => {
     expect(state.dirty).toBe(true);
   });
 
+  it("updateNodePositions met à jour les positions sans marquer dirty", () => {
+    useWorkflowStore.setState({ workflow: makeWorkflow() });
+    useWorkflowStore
+      .getState()
+      .updateNodePositions([{ id: "s1", position: { x: 300, y: 150 } }]);
+    const state = useWorkflowStore.getState();
+    expect(state.workflow?.steps[0].position).toEqual({ x: 300, y: 150 });
+    expect(state.dirty).toBe(false);
+  });
+
+  it("loadWorkflow applique le layout sauvegardé", async () => {
+    vi.spyOn(api, "getWorkflowWithEtag").mockResolvedValue({
+      workflow: makeWorkflow(),
+      etag: '"abc"',
+    });
+    vi.spyOn(api, "getLayout").mockResolvedValue({
+      nodes: [{ id: "s2", position: { x: 500, y: 250 } }],
+    });
+    await useWorkflowStore.getState().loadWorkflow("demo");
+    const state = useWorkflowStore.getState();
+    expect(state.workflow?.steps[1].position).toEqual({ x: 500, y: 250 });
+    expect(state.workflow?.steps[0].position).toBeUndefined();
+  });
+
+  it("loadWorkflow ignore l'absence de layout", async () => {
+    vi.spyOn(api, "getWorkflowWithEtag").mockResolvedValue({
+      workflow: makeWorkflow(),
+      etag: '"abc"',
+    });
+    vi.spyOn(api, "getLayout").mockRejectedValue(new Error("404"));
+    await useWorkflowStore.getState().loadWorkflow("demo");
+    const state = useWorkflowStore.getState();
+    expect(state.workflow?.steps[0].position).toBeUndefined();
+    expect(state.error).toBe("");
+  });
+
   it("addStep ajoute une étape et la sélectionne", () => {
     useWorkflowStore.setState({ workflow: makeWorkflow() });
     useWorkflowStore.getState().addStep({

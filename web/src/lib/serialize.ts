@@ -58,7 +58,7 @@ export function serializeWorkflow(wf: Workflow): { nodes: GraphNode[]; edges: Gr
     list.forEach((step, row) => {
       nodes.push({
         id: step.id,
-        position: { x: col * COL_X, y: row * COL_Y },
+        position: step.position ?? { x: col * COL_X, y: row * COL_Y },
         data: {
           label: step.name,
           phase: step.phase,

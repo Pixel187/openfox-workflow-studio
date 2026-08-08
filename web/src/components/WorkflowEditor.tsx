@@ -26,6 +26,7 @@ export default function WorkflowEditor({ workflowId, onBack, onSaved }: Workflow
   const error = useWorkflowStore((s) => s.error);
   const addStep = useWorkflowStore((s) => s.addStep);
   const connectSteps = useWorkflowStore((s) => s.connectSteps);
+  const updateNodePositions = useWorkflowStore((s) => s.updateNodePositions);
   const layoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onConnect = useCallback(
@@ -56,21 +57,22 @@ export default function WorkflowEditor({ workflowId, onBack, onSaved }: Workflow
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
-      // Persistance des positions : debounce 500ms après chaque changement
-      if (layoutTimer.current) clearTimeout(layoutTimer.current);
-      layoutTimer.current = setTimeout(() => {
-        if (workflow) {
-          const positions = changes
-            .filter((c): c is Extract<typeof c, { type: "position" }> => c.type === "position")
-            .filter((c) => c.position)
-            .map((c) => ({ id: c.id, position: c.position! }));
-          if (positions.length > 0) {
+      const positions = changes
+        .filter((c): c is Extract<typeof c, { type: "position" }> => c.type === "position")
+        .filter((c) => c.position)
+        .map((c) => ({ id: c.id, position: c.position! }));
+      if (positions.length > 0) {
+        updateNodePositions(positions);
+        // Persistance des positions : debounce 500ms après chaque changement
+        if (layoutTimer.current) clearTimeout(layoutTimer.current);
+        layoutTimer.current = setTimeout(() => {
+          if (workflow) {
             api.putLayout(workflow.metadata.id, { nodes: positions }).catch(() => {});
           }
-        }
-      }, 500);
+        }, 500);
+      }
     },
-    [workflow],
+    [updateNodePositions, workflow],
   );
 
   const onNodeDragStop = useCallback(

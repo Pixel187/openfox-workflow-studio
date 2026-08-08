@@ -40,6 +40,8 @@ export interface Step {
   prompt: string;
   nudgePrompt?: string;
   transitions: { when?: string; goto: string }[];
+  /** Position canvas (sidecar layout), ignorée par OpenFox. */
+  position?: { x: number; y: number };
 }
 
 export interface VariableCategory {
