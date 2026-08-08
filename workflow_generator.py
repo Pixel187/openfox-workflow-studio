@@ -21,8 +21,14 @@ from pathlib import Path
 
 APP_DATA = Path(os.environ.get("APPDATA", ""))
 WORKFLOWS_DIR = APP_DATA / "openfox" / "workflows"
-# Guide des bonnes pratiques embarqué dans le dépôt (docs/).
-BEST_PRACTICES_FILE = Path(__file__).resolve().parent / "docs" / "BONNES_PRATIQUES_WORKFLOW.md"
+# Best-practices file: override via OPENFOX_BEST_PRACTICES_FILE env var.
+# Default points to the repository guide (docs/).
+_bp_env = os.environ.get("OPENFOX_BEST_PRACTICES_FILE", "")
+BEST_PRACTICES_FILE: Path | None = Path(_bp_env) if _bp_env else Path(__file__).resolve().parent / "docs" / "BONNES_PRATIQUES_WORKFLOW.md"
+
+# Root directory for new workflow working dirs: override via OPENFOX_WORKDIR_ROOT.
+_workdir_root_env = os.environ.get("OPENFOX_WORKDIR_ROOT", "")
+WORKDIR_ROOT = Path(_workdir_root_env) if _workdir_root_env else Path.home() / "openfox"
 OLLAMA_URL = "http://localhost:11434/v1/chat/completions"
 DEFAULT_MODEL = "mistral-small3.2"
 
@@ -48,7 +54,7 @@ def c(text, code=36):
 
 def load_best_practices():
     """Charge les bonnes pratiques depuis le fichier .md."""
-    if BEST_PRACTICES_FILE.exists():
+    if BEST_PRACTICES_FILE is not None and BEST_PRACTICES_FILE.exists():
         text = BEST_PRACTICES_FILE.read_text(encoding="utf-8")
         return text[:4000]  # limite pour le prompt
     return ""
@@ -429,17 +435,19 @@ def interactive_session():
     specifics = ask(">", "")
     print('  Ex: "ajouter verification Zotero", "utiliser SearXNG"')
 
-    default_dir = str(Path.home() / "openfox" / wf_id)
+    default_dir = str(WORKDIR_ROOT / wf_id)
     workdir = ask("Répertoire de travail", default_dir)
 
     # Construire la spécification structurée
+    # Only the workflow ID (basename) is included in the prompt to avoid leaking
+    # personal directory paths to the Ollama model.
     req = f"""NOM : {name}
 ID : {wf_id}
 DESCRIPTION : {desc}
 OBJECTIF : {main_obj}
 NOMBRE_ETAPES : {n_steps}
 MODÈLE : {model}
-RÉPERTOIRE : {workdir}
+RÉPERTOIRE : {wf_id}
 SPÉCIFICITÉS : {specifics or "(aucune)"}
 TYPE_AGENT : builder (obligatoire)
 LANGUE : fr (prompts en français)
