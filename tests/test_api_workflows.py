@@ -91,6 +91,23 @@ def test_create_slugifies_name(client: TestClient) -> None:
     assert response.json()["metadata"]["id"] == "mon-workflow-ete"
 
 
+def test_create_derived_id_auto_uniquifies(client: TestClient) -> None:
+    wf = _workflow()
+    wf["metadata"].pop("id")
+    wf["metadata"]["name"] = "Nouveau workflow"
+    first = client.post("/api/workflows", json=wf)
+    assert first.status_code == 201
+    assert first.json()["metadata"]["id"] == "nouveau-workflow"
+
+    second = client.post("/api/workflows", json=wf)
+    assert second.status_code == 201
+    assert second.json()["metadata"]["id"] == "nouveau-workflow-2"
+
+    third = client.post("/api/workflows", json=wf)
+    assert third.status_code == 201
+    assert third.json()["metadata"]["id"] == "nouveau-workflow-3"
+
+
 def test_put_requires_if_match(client: TestClient) -> None:
     client.post("/api/workflows", json=_workflow())
     response = client.put("/api/workflows/demo", json=_workflow())

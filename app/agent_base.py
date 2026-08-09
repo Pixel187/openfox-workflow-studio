@@ -80,6 +80,26 @@ _SEED_TEMPLATES: list[dict[str, Any]] = [
         ),
         "nudgePrompt": "Signale tout constat objectif, sans exagération.",
     },
+    {
+        "id": "interrogateur",
+        "name": "Interrogateur",
+        "description": "Pose des questions à l'utilisateur pour clarifier la demande.",
+        "collection": "general",
+        "type": "agent",
+        "phase": "planning",
+        "agentId": "builder",
+        "subGroup": "planning",
+        "prompt": (
+            "Interroge l'utilisateur pour clarifier la demande avant de commencer.\n\n"
+            "1. ask_user(question=\"Quel est l'objectif principal de ce travail ?\", type=\"text\")\n"
+            "2. ask_user(question=\"Y a-t-il des contraintes ou des préférences à respecter ?\", type=\"text\")\n"
+            "3. ask_user(question=\"Le livrable doit-il être validé avant de continuer ?\", type=\"confirm\")\n"
+            "4. Synthétise les réponses et définis les critères de vérification :\n"
+            "   session_metadata(action=\"add\", key=\"criteria\", id=\"<id>\", description=\"<critère>\")\n"
+            "5. step_done()"
+        ),
+        "nudgePrompt": "Pose des questions courtes et ciblées. Ne pose pas plus de 3 questions.",
+    },
     # ── codage (développement) ────────────────────────────────────────
     {
         "id": "architecte",

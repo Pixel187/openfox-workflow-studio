@@ -90,9 +90,11 @@ def get_one(workflow_id: str) -> Response:
 
 @router.post("", status_code=201)
 def create(payload: dict[str, Any]) -> Response:
-    """Crée un workflow. 409 si l'id existe déjà."""
+    """Crée un workflow. 409 si l'id explicite existe déjà ; si l'id est dérivé
+    du nom, un suffixe numérique est ajouté pour garantir l'unicité."""
     meta = payload.get("metadata", {})
-    workflow_id = meta.get("id") or slugify(meta.get("name", "workflow"))
+    explicit_id = meta.get("id")
+    workflow_id = explicit_id or slugify(meta.get("name", "workflow"))
     if not workflow_id:
         raise HTTPException(status_code=422, detail="metadata.id ou metadata.name requis")
     try:
@@ -100,7 +102,10 @@ def create(payload: dict[str, Any]) -> Response:
     except PathTraversalError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if path.exists():
-        raise HTTPException(status_code=409, detail=f"Workflow '{workflow_id}' existe déjà")
+        if explicit_id:
+            raise HTTPException(status_code=409, detail=f"Workflow '{workflow_id}' existe déjà")
+        workflow_id = _unique_id(workflow_id)
+        path = resolve_path(workflow_id, _ws_dir())
     payload.setdefault("metadata", {})["id"] = workflow_id
     write_workflow(payload, path, lock=True)
     data, etag, mtime = _read_with_meta(path)
@@ -110,6 +115,16 @@ def create(payload: dict[str, Any]) -> Response:
         status_code=201,
         headers={"ETag": etag, "X-MTime": str(mtime)},
     )
+
+
+def _unique_id(base: str) -> str:
+    """Retourne base, base-2, base-3… tant que le fichier existe."""
+    candidate = base
+    suffix = 2
+    while resolve_path(candidate, _ws_dir()).exists():
+        candidate = f"{base}-{suffix}"
+        suffix += 1
+    return candidate
 
 
 @router.put("/{workflow_id}")

@@ -97,6 +97,14 @@ def test_verifier_has_verifier_findings_pattern(base_dir: Path) -> None:
     assert "verifierFindings" in verifier["prompt"]
 
 
+def test_interrogateur_uses_ask_user(base_dir: Path) -> None:
+    agent_base.seed_if_empty()
+    interrogateur = agent_base.get_template("interrogateur")
+    assert "ask_user" in interrogateur["prompt"]
+    assert interrogateur["collection"] == "general"
+    assert interrogateur["phase"] == "planning"
+
+
 def test_api_create_template(base_dir: Path) -> None:
     client = TestClient(app)
     payload = {
