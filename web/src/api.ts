@@ -83,13 +83,21 @@ export interface ValidationReport {
   warnings: string[];
 }
 
+export interface DiffEntry {
+  id: string;
+  name: string;
+  changes?: { field: string; before: unknown; after: unknown }[];
+}
+
 export interface ProposalResponse {
   proposal_id: string;
   proposed: Workflow;
-  diff: { added: string[]; removed: string[]; modified: string[] };
+  diff: { added: DiffEntry[]; removed: DiffEntry[]; modified: DiffEntry[] };
   validation: ValidationReport;
   preserves_vars: boolean;
   lost_vars: string[];
+  fallback_used?: boolean;
+  fallback_model?: string | null;
 }
 
 async function request<T>(path: string, method: string = "GET", body?: unknown): Promise<T> {

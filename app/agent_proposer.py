@@ -170,17 +170,36 @@ class AgentProposer:
 
     def _compute_diff(
         self, original: dict[str, Any], proposed: dict[str, Any]
-    ) -> dict[str, list[str]]:
-        orig_ids = {s.get("id") for s in original.get("steps", [])}
-        prop_ids = {s.get("id") for s in proposed.get("steps", [])}
-        added = sorted(prop_ids - orig_ids)
-        removed = sorted(orig_ids - prop_ids)
+    ) -> dict[str, list[Any]]:
+        orig = {s.get("id"): s for s in original.get("steps", [])}
+        prop = {s.get("id"): s for s in proposed.get("steps", [])}
+        added = sorted(prop.keys() - orig.keys())
+        removed = sorted(orig.keys() - prop.keys())
         modified = sorted(
             sid
-            for sid in orig_ids & prop_ids
+            for sid in orig.keys() & prop.keys()
             if self._step_changed(original, proposed, sid)
         )
-        return {"added": added, "removed": removed, "modified": modified}
+        return {
+            "added": [{"id": sid, "name": prop[sid].get("name", sid)} for sid in added],
+            "removed": [{"id": sid, "name": orig[sid].get("name", sid)} for sid in removed],
+            "modified": [
+                {
+                    "id": sid,
+                    "name": prop[sid].get("name", sid),
+                    "changes": self._step_changes(orig[sid], prop[sid]),
+                }
+                for sid in modified
+            ],
+        }
+
+    def _step_changes(self, before: dict[str, Any], after: dict[str, Any]) -> list[dict[str, Any]]:
+        fields = sorted(set(before) | set(after))
+        return [
+            {"field": f, "before": before.get(f), "after": after.get(f)}
+            for f in fields
+            if before.get(f) != after.get(f)
+        ]
 
     def _step_changed(self, original: dict[str, Any], proposed: dict[str, Any], sid: str) -> bool:
         orig = next(s for s in original.get("steps", []) if s.get("id") == sid)

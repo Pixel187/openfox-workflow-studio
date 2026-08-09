@@ -128,6 +128,9 @@ async def propose(req: ProposeRequest) -> dict[str, Any]:
             step_id=req.step_id,
             model=config.settings.ollama_model,
         )
+        fallback_used = True
+    else:
+        fallback_used = False
 
     if not result.success:
         status = 422
@@ -163,6 +166,8 @@ async def propose(req: ProposeRequest) -> dict[str, Any]:
         },
         "preserves_vars": result.preserves_vars,
         "lost_vars": result.lost_vars,
+        "fallback_used": fallback_used,
+        "fallback_model": config.settings.ollama_model if fallback_used else None,
     }
 
 

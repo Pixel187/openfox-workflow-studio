@@ -45,15 +45,22 @@ test("flux propose → approuver met à jour le workflow et le canvas", async ({
   );
   await page.getByRole("button", { name: "Proposer" }).click();
 
-  await expect(page.getByText("+ s2")).toBeVisible();
+  await expect(page.getByText("+ Étape IA (s2)")).toBeVisible();
   await expect(page.getByText("variables préservées")).toBeVisible();
 
   await page.getByRole("button", { name: "Approuver" }).click();
 
-  const get = await request.get(`${BACKEND}/api/workflows/e2e-demo`);
-  expect(get.status()).toBe(200);
-  const data = await get.json();
-  expect(data.steps.map((s: { id: string }) => s.id)).toContain("s2");
+  await expect
+    .poll(
+      async () => {
+        const get = await request.get(`${BACKEND}/api/workflows/e2e-demo`);
+        if (get.status() !== 200) return [];
+        const data = await get.json();
+        return data.steps.map((s: { id: string }) => s.id);
+      },
+      { timeout: 10_000 },
+    )
+    .toContain("s2");
 
   await expect(page.getByText("Étape IA")).toBeVisible();
 });

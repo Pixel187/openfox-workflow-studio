@@ -81,11 +81,14 @@ export default function AgentChat({ onApplied }: AgentChatProps) {
 
   const diffLines = proposal
     ? [
-        ...proposal.diff.added.map((id) => ({ kind: "added", text: `+ ${id}` })),
-        ...proposal.diff.removed.map((id) => ({ kind: "removed", text: `- ${id}` })),
-        ...proposal.diff.modified.map((id) => ({ kind: "modified", text: `~ ${id}` })),
+        ...proposal.diff.added.map((e) => ({ kind: "added", text: `+ ${e.name} (${e.id})` })),
+        ...proposal.diff.removed.map((e) => ({ kind: "removed", text: `- ${e.name} (${e.id})` })),
+        ...proposal.diff.modified.map((e) => ({ kind: "modified", text: `~ ${e.name} (${e.id})` })),
       ]
     : [];
+
+  const fmt = (v: unknown) =>
+    typeof v === "string" ? v : JSON.stringify(v, null, 0);
 
   return (
     <div className="flex h-full flex-col p-3">
@@ -145,6 +148,13 @@ export default function AgentChat({ onApplied }: AgentChatProps) {
 
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
+      {proposal?.fallback_used && (
+        <p className="mt-2 rounded bg-amber-50 px-2 py-1 text-[10px] text-amber-700">
+          Modèle demandé indisponible pour une proposition valide — généré avec{" "}
+          {proposal.fallback_model ?? "le modèle par défaut"} (fallback)
+        </p>
+      )}
+
       {proposal && (
         <div className="mt-3 flex-1 overflow-y-auto rounded border border-slate-200 bg-white p-2">
           <div className="mb-1 flex items-center justify-between">
@@ -181,6 +191,19 @@ export default function AgentChat({ onApplied }: AgentChatProps) {
               </li>
             ))}
           </ul>
+          {proposal.diff.modified.length > 0 && (
+            <ul className="mt-2 space-y-1 border-t border-slate-100 pt-1 text-[10px]">
+              {proposal.diff.modified.flatMap((e) =>
+                (e.changes ?? []).map((c) => (
+                  <li key={`${e.id}-${c.field}`} className="text-slate-600">
+                    <span className="font-semibold text-slate-700">{c.field}</span>
+                    <div className="ml-2 text-red-600 line-through">{fmt(c.before)}</div>
+                    <div className="ml-2 text-green-700">{fmt(c.after)}</div>
+                  </li>
+                )),
+              )}
+            </ul>
+          )}
           {!proposal.validation.valid && (
             <ul className="mt-2 list-disc pl-4 text-[10px] text-red-600">
               {proposal.validation.errors.map((e, i) => (

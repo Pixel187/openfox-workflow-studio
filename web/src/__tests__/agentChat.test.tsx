@@ -35,7 +35,7 @@ describe("AgentChat", () => {
     vi.spyOn(api, "propose").mockResolvedValue({
       proposal_id: "p1",
       proposed: makeWorkflow(),
-      diff: { added: ["s2"], removed: [], modified: [] },
+      diff: { added: [{ id: "s2", name: "Étape 2" }], removed: [], modified: [] },
       validation: { valid: true, errors: [], warnings: [] },
       preserves_vars: true,
       lost_vars: [],
@@ -45,8 +45,62 @@ describe("AgentChat", () => {
       target: { value: "Ajoute une étape" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Proposer" }));
-    await waitFor(() => expect(screen.getByText("+ s2")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("+ Étape 2 (s2)")).toBeInTheDocument());
     expect(screen.getByText("variables préservées")).toBeInTheDocument();
+  });
+
+  it("affiche les changements de champs pour une étape modifiée", async () => {
+    vi.spyOn(api, "getModels").mockResolvedValue({ models: ["mistral-small3.2"] });
+    vi.spyOn(api, "propose").mockResolvedValue({
+      proposal_id: "p1",
+      proposed: makeWorkflow(),
+      diff: {
+        added: [],
+        removed: [],
+        modified: [
+          {
+            id: "s1",
+            name: "Build",
+            changes: [
+              { field: "prompt", before: "Utilise {{workdir}}", after: "Utilise {{workdir}} et vérifie" },
+            ],
+          },
+        ],
+      },
+      validation: { valid: true, errors: [], warnings: [] },
+      preserves_vars: true,
+      lost_vars: [],
+    });
+    render(<AgentChat onApplied={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText("Ex : ajoute une étape de vérification"), {
+      target: { value: "Améliore" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Proposer" }));
+    await waitFor(() => expect(screen.getByText("~ Build (s1)")).toBeInTheDocument());
+    expect(screen.getByText("prompt")).toBeInTheDocument();
+    expect(screen.getByText("Utilise {{workdir}} et vérifie")).toBeInTheDocument();
+  });
+
+  it("affiche la bannière fallback quand le modèle par défaut a été utilisé", async () => {
+    vi.spyOn(api, "getModels").mockResolvedValue({ models: ["mistral-small3.2"] });
+    vi.spyOn(api, "propose").mockResolvedValue({
+      proposal_id: "p1",
+      proposed: makeWorkflow(),
+      diff: { added: [], removed: [], modified: [{ id: "s1", name: "Build" }] },
+      validation: { valid: true, errors: [], warnings: [] },
+      preserves_vars: true,
+      lost_vars: [],
+      fallback_used: true,
+      fallback_model: "mistral-small3.2",
+    });
+    render(<AgentChat onApplied={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText("Ex : ajoute une étape de vérification"), {
+      target: { value: "Ajoute" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Proposer" }));
+    await waitFor(() =>
+      expect(screen.getByText(/généré avec mistral-small3.2/)).toBeInTheDocument(),
+    );
   });
 
   it("Approuver appelle apply puis onApplied", async () => {
@@ -54,7 +108,7 @@ describe("AgentChat", () => {
     vi.spyOn(api, "propose").mockResolvedValue({
       proposal_id: "p1",
       proposed: makeWorkflow(),
-      diff: { added: [], removed: [], modified: ["s1"] },
+      diff: { added: [], removed: [], modified: [{ id: "s1", name: "Build" }] },
       validation: { valid: true, errors: [], warnings: [] },
       preserves_vars: true,
       lost_vars: [],

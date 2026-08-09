@@ -182,6 +182,8 @@ def test_propose_returns_proposal_id(client: TestClient, fake_agent) -> None:
     assert payload["proposed"]["steps"][0]["prompt"].startswith("Fais le travail")
     assert payload["preserves_vars"] is True
     assert payload["validation"]["valid"] is True
+    assert payload["fallback_used"] is False
+    assert payload["fallback_model"] is None
 
 
 def test_propose_fallback_retries_with_default_model(
@@ -210,6 +212,8 @@ def test_propose_fallback_retries_with_default_model(
     assert response.status_code == 200
     assert recording.calls == ["qwen2.5:32b", config.settings.ollama_model]
     assert response.json()["validation"]["valid"] is True
+    assert response.json()["fallback_used"] is True
+    assert response.json()["fallback_model"] == config.settings.ollama_model
 
 
 def test_propose_fallback_fails_when_default_also_invalid(

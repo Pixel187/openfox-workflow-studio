@@ -44,14 +44,43 @@ class FakeProposer:
             )
             if proposed["steps"]:
                 proposed["steps"][0]["transitions"] = [{"goto": "s2"}]
-            diff = {"added": ["s2"], "removed": [], "modified": ["s1"]}
+            diff = {
+                "added": [{"id": "s2", "name": "Étape IA"}],
+                "removed": [],
+                "modified": [
+                    {
+                        "id": "s1",
+                        "name": proposed["steps"][0]["name"] if proposed["steps"] else "s1",
+                        "changes": [
+                            {
+                                "field": "transitions",
+                                "before": [{"goto": "$done"}],
+                                "after": [{"goto": "s2"}],
+                            }
+                        ],
+                    }
+                ],
+            }
         else:
             target = step_id or proposed["steps"][0]["id"]
             for step in proposed["steps"]:
                 if step["id"] == target:
                     step["prompt"] = step["prompt"] + " (amélioré par l'assistant)"
                     break
-            diff = {"added": [], "removed": [], "modified": [target]}
+            diff = {
+                "added": [],
+                "removed": [],
+                "modified": [
+                    {
+                        "id": target,
+                        "name": next(
+                            (s["name"] for s in proposed["steps"] if s["id"] == target),
+                            target,
+                        ),
+                        "changes": [{"field": "prompt", "before": "", "after": ""}],
+                    }
+                ],
+            }
         return Proposal(
             success=True,
             proposed=proposed,

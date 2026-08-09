@@ -61,8 +61,25 @@ def test_propose_workflow_scope_adds_step() -> None:
     client = _client_returning(proposed)
     result = AgentProposer(client).propose(_workflow(), scope="workflow", instruction="Ajoute une étape")
     assert result.proposed["steps"][1]["id"] == "s2"
-    assert result.diff["added"] == ["s2"]
+    assert result.diff["added"] == [{"id": "s2", "name": "S2"}]
     assert result.preserves_vars is True
+
+
+def test_diff_modified_includes_field_changes() -> None:
+    proposed = json.loads(json.dumps(_workflow()))
+    proposed["steps"][0]["prompt"] = "Nouveau prompt avec {{workdir}}"
+    client = _client_returning(proposed)
+    result = AgentProposer(client).propose(
+        _workflow(), scope="prompt", step_id="s1", instruction="Améliore le prompt"
+    )
+    assert result.success is True
+    modified = result.diff["modified"]
+    assert len(modified) == 1
+    assert modified[0]["id"] == "s1"
+    assert modified[0]["name"] == "S1"
+    prompt_change = next(c for c in modified[0]["changes"] if c["field"] == "prompt")
+    assert prompt_change["before"] == "Utilise {{workdir}} pour le travail"
+    assert prompt_change["after"] == "Nouveau prompt avec {{workdir}}"
 
 
 def test_propose_prompt_scope_only_changes_prompt() -> None:
