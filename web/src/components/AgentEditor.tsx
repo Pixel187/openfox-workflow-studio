@@ -29,6 +29,8 @@ function emptyPayload(): AgentTemplatePayload {
 /**
  * Formulaire modal de création / édition d'un gabarit d'agent.
  * POST /api/agent-base à la création, PUT /api/agent-base/{id} en édition.
+ * En création, un bouton « Générer avec l'IA » pré-remplit le formulaire
+ * via POST /api/agent-base/generate (Ollama).
  */
 export default function AgentEditor({ template, onClose, onSaved }: AgentEditorProps) {
   const [payload, setPayload] = useState<AgentTemplatePayload>(
@@ -36,10 +38,25 @@ export default function AgentEditor({ template, onClose, onSaved }: AgentEditorP
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [aiDescription, setAiDescription] = useState("");
+  const [models, setModels] = useState<string[]>([]);
+  const [model, setModel] = useState("");
 
   useEffect(() => {
     setPayload(template ? { ...template } : emptyPayload());
     setError("");
+  }, [template]);
+
+  useEffect(() => {
+    if (template) return;
+    api
+      .getModels()
+      .then(({ models: list, default_model }) => {
+        setModels(list);
+        setModel(default_model ?? list[0] ?? "");
+      })
+      .catch(() => setModels([]));
   }, [template]);
 
   const set = <K extends keyof AgentTemplatePayload>(key: K, value: AgentTemplatePayload[K]) =>
@@ -50,6 +67,24 @@ export default function AgentEditor({ template, onClose, onSaved }: AgentEditorP
     !template && payload.id !== "" && !/^[a-z0-9][a-z0-9-]*$/.test(payload.id)
       ? "L'identifiant doit être en minuscules (a-z, 0-9, tirets)."
       : "";
+
+  const onGenerate = async () => {
+    if (!aiDescription.trim()) return;
+    setGenerating(true);
+    setError("");
+    try {
+      const generated = await api.generateAgentTemplate({
+        description: aiDescription.trim(),
+        collection: payload.collection,
+        model: model || undefined,
+      });
+      setPayload({ ...emptyPayload(), ...generated });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -89,6 +124,43 @@ export default function AgentEditor({ template, onClose, onSaved }: AgentEditorP
         </div>
 
         {error && <p className="mb-2 rounded bg-red-50 px-2 py-1 text-xs text-red-700">{error}</p>}
+
+        {!template && (
+          <div className="mb-3 rounded border border-blue-200 bg-blue-50 p-2">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-blue-700">
+              Génération assistée par IA
+            </p>
+            <div className="flex gap-2">
+              <input
+                className={inputClass}
+                placeholder="Décris l'agent en une phrase (ex : audite la conformité RGPD)"
+                value={aiDescription}
+                onChange={(e) => setAiDescription(e.target.value)}
+              />
+              <select
+                className="w-44 rounded border border-slate-300 px-2 py-1 text-xs"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                aria-label="Modèle IA"
+              >
+                {models.length === 0 && <option value="">Modèle par défaut</option>}
+                {models.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={onGenerate}
+                disabled={generating || !aiDescription.trim()}
+                className="shrink-0 rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-500 disabled:opacity-40"
+              >
+                {generating ? "Génération…" : "Générer avec l'IA"}
+              </button>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">

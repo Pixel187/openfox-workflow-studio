@@ -197,3 +197,71 @@ def test_api_delete_missing_404(base_dir: Path) -> None:
     client = TestClient(app)
     response = client.delete("/api/agent-base/absent")
     assert response.status_code == 404
+
+
+class _FakeGenerator:
+    """Faux générateur : retourne un gabarit valide ou lève une erreur."""
+
+    def __init__(self, error: str | None = None) -> None:
+        self.error = error
+        self.calls: list[dict] = []
+
+    def generate(self, description: str, collection: str = "general", model: str | None = None) -> dict:
+        self.calls.append({"description": description, "collection": collection, "model": model})
+        if self.error:
+            raise ValueError(self.error)
+        return {
+            "id": "auditeur-rgpd",
+            "name": "Auditeur RGPD",
+            "description": "Vérifie la conformité RGPD d'un dossier.",
+            "collection": collection,
+            "type": "sub_agent",
+            "phase": "verification",
+            "agentId": "builder",
+            "subAgentType": "verifier",
+            "subGroup": "verify",
+            "prompt": "Vérifie la conformité RGPD. step_done()",
+            "nudgePrompt": "Cite les sources officielles.",
+        }
+
+
+def test_api_generate_template(base_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import routes_agent_base
+
+    fake = _FakeGenerator()
+    monkeypatch.setattr(routes_agent_base, "_generator", fake)
+    client = TestClient(app)
+    response = client.post(
+        "/api/agent-base/generate",
+        json={"description": "Audit RGPD", "collection": "juridique", "model": "qwen2.5:32b"},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["id"] == "auditeur-rgpd"
+    assert data["collection"] == "juridique"
+    assert fake.calls == [{"description": "Audit RGPD", "collection": "juridique", "model": "qwen2.5:32b"}]
+
+
+def test_api_generate_invalid_collection_422(base_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import routes_agent_base
+
+    fake = _FakeGenerator()
+    monkeypatch.setattr(routes_agent_base, "_generator", fake)
+    client = TestClient(app)
+    response = client.post(
+        "/api/agent-base/generate",
+        json={"description": "Audit RGPD", "collection": "inexistante"},
+    )
+    assert response.status_code == 422
+    assert fake.calls == []
+
+
+def test_api_generate_llm_error_502(base_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import routes_agent_base
+
+    fake = _FakeGenerator(error="Ollama down")
+    monkeypatch.setattr(routes_agent_base, "_generator", fake)
+    client = TestClient(app)
+    response = client.post("/api/agent-base/generate", json={"description": "Audit RGPD"})
+    assert response.status_code == 502
+    assert "Ollama down" in response.json()["detail"]

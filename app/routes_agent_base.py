@@ -8,8 +8,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.agent_base import COLLECTIONS, delete_template, get_template, list_templates, save_template
+from app.agent_generator import AgentGenerator
 
 router = APIRouter(prefix="/api")
+
+_generator = AgentGenerator()
 
 
 class TemplatePayload(BaseModel):
@@ -50,6 +53,26 @@ def get_one_template(template_id: str) -> dict[str, Any]:
         return get_template(template_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Gabarit '{template_id}' introuvable") from exc
+
+
+class GenerateRequest(BaseModel):
+    description: str = Field(min_length=1)
+    collection: str = "general"
+    model: str | None = None
+
+
+@router.post("/agent-base/generate", status_code=201)
+def generate_template(payload: GenerateRequest) -> dict[str, Any]:
+    """Génère un gabarit d'agent via Ollama (ne rien écrit)."""
+    _validate_collection(payload.collection)
+    try:
+        return _generator.generate(
+            description=payload.description,
+            collection=payload.collection,
+            model=payload.model,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/agent-base", status_code=201)

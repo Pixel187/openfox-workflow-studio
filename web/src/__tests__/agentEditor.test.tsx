@@ -18,6 +18,7 @@ const TEMPLATE: AgentTemplate = {
 describe("AgentEditor", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(api, "getModels").mockResolvedValue({ models: ["mistral-small3.2"] });
   });
 
   it("crée un agent via POST avec le payload rempli", async () => {
@@ -64,5 +65,41 @@ describe("AgentEditor", () => {
     fireEvent.change(screen.getByLabelText(/Prompt/), { target: { value: "x" } });
     fireEvent.click(screen.getByRole("button", { name: "Créer" }));
     await waitFor(() => expect(screen.getByText(/existe déjà/)).toBeInTheDocument());
+  });
+
+  it("Générer avec l'IA pré-remplit le formulaire", async () => {
+    const generated: AgentTemplate = {
+      id: "auditeur-rgpd",
+      name: "Auditeur RGPD",
+      description: "Vérifie la conformité RGPD d'un dossier.",
+      collection: "juridique",
+      type: "sub_agent",
+      phase: "verification",
+      agentId: "builder",
+      subAgentType: "verifier",
+      subGroup: "verify",
+      prompt: "Vérifie la conformité RGPD. step_done()",
+      nudgePrompt: "Cite les sources officielles.",
+    };
+    const generateSpy = vi.spyOn(api, "generateAgentTemplate").mockResolvedValue(generated);
+    render(<AgentEditor template={null} onClose={() => {}} onSaved={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/Décris l'agent/), {
+      target: { value: "Audit RGPD" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Générer avec l'IA" }));
+    await waitFor(() => expect(generateSpy).toHaveBeenCalledWith(expect.objectContaining({ description: "Audit RGPD" })));
+    expect(screen.getByDisplayValue("auditeur-rgpd")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Auditeur RGPD")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Prompt/)).toHaveValue("Vérifie la conformité RGPD. step_done()");
+  });
+
+  it("affiche l'erreur de génération IA", async () => {
+    vi.spyOn(api, "generateAgentTemplate").mockRejectedValue(new Error("HTTP 502: Ollama down"));
+    render(<AgentEditor template={null} onClose={() => {}} onSaved={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/Décris l'agent/), {
+      target: { value: "Audit RGPD" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Générer avec l'IA" }));
+    await waitFor(() => expect(screen.getByText(/Ollama down/)).toBeInTheDocument());
   });
 });
