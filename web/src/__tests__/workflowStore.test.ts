@@ -58,6 +58,21 @@ describe("workflowStore", () => {
     expect(state.dirty).toBe(true);
   });
 
+  it("renameWorkflow renomme le workflow et marque dirty", () => {
+    useWorkflowStore.setState({ workflow: makeWorkflow() });
+    useWorkflowStore.getState().renameWorkflow("  Demo v2  ");
+    const state = useWorkflowStore.getState();
+    expect(state.workflow?.metadata.name).toBe("Demo v2");
+    expect(state.dirty).toBe(true);
+  });
+
+  it("renameWorkflow ignore les noms vides ou inchangés", () => {
+    useWorkflowStore.setState({ workflow: makeWorkflow() });
+    useWorkflowStore.getState().renameWorkflow("   ");
+    useWorkflowStore.getState().renameWorkflow("Demo");
+    expect(useWorkflowStore.getState().dirty).toBe(false);
+  });
+
   it("updateNodePositions met à jour les positions sans marquer dirty", () => {
     useWorkflowStore.setState({ workflow: makeWorkflow() });
     useWorkflowStore

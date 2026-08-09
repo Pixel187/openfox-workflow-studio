@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { OnNodesChange } from "@xyflow/react";
 import { useWorkflowStore } from "../store/workflowStore";
 import { useDebouncedLayout } from "../hooks/useDebouncedLayout";
@@ -22,6 +22,7 @@ export default function WorkflowEditor({ workflowId, onBack, onSaved }: Workflow
   const setSelectedStep = useWorkflowStore((s) => s.setSelectedStep);
   const save = useWorkflowStore((s) => s.save);
   const validate = useWorkflowStore((s) => s.validate);
+  const renameWorkflow = useWorkflowStore((s) => s.renameWorkflow);
   const dirty = useWorkflowStore((s) => s.dirty);
   const saving = useWorkflowStore((s) => s.saving);
   const error = useWorkflowStore((s) => s.error);
@@ -29,6 +30,19 @@ export default function WorkflowEditor({ workflowId, onBack, onSaved }: Workflow
   const connectSteps = useWorkflowStore((s) => s.connectSteps);
   const updateNodePositions = useWorkflowStore((s) => s.updateNodePositions);
   const scheduleLayout = useDebouncedLayout(workflow?.metadata.id ?? null);
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+
+  const startRename = () => {
+    setNameDraft(workflow?.metadata.name ?? "");
+    setEditingName(true);
+  };
+
+  const commitRename = () => {
+    setEditingName(false);
+    renameWorkflow(nameDraft);
+  };
 
   const onConnect = useCallback(
     (connection: { source: string | null; target: string | null }) => {
@@ -111,7 +125,28 @@ export default function WorkflowEditor({ workflowId, onBack, onSaved }: Workflow
           ← Liste
         </button>
         <div className="flex-1">
-          <span className="text-sm font-semibold text-slate-800">{workflow.metadata.name}</span>
+          {editingName ? (
+            <input
+              autoFocus
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRename();
+                if (e.key === "Escape") setEditingName(false);
+              }}
+              className="rounded border border-blue-400 px-1 py-0.5 text-sm font-semibold text-slate-800"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={startRename}
+              title="Renommer le workflow"
+              className="text-sm font-semibold text-slate-800 hover:text-blue-600"
+            >
+              {workflow.metadata.name} ✎
+            </button>
+          )}
           <span className="ml-2 text-xs text-slate-400">{workflow.metadata.id}</span>
           {dirty && <span className="ml-2 text-xs text-amber-600">● non sauvegardé</span>}
         </div>

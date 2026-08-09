@@ -12,6 +12,7 @@ interface WorkflowState {
   dirty: boolean;
 
   loadWorkflow: (id: string) => Promise<void>;
+  renameWorkflow: (name: string) => void;
   setSelectedStep: (stepId: string | null) => void;
   updateStep: (stepId: string, patch: Partial<Step>) => void;
   updateNodePositions: (changes: { id: string; position: { x: number; y: number } }[]) => void;
@@ -64,6 +65,17 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
 
   setSelectedStep: (stepId) => set({ selectedStepId: stepId }),
+
+  renameWorkflow: (name) => {
+    const wf = get().workflow;
+    if (!wf) return;
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === wf.metadata.name) return;
+    set({
+      workflow: { ...wf, metadata: { ...wf.metadata, name: trimmed } },
+      dirty: true,
+    });
+  },
 
   updateNodePositions: (changes) => {
     const wf = get().workflow;
