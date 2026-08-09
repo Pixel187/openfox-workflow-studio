@@ -192,6 +192,10 @@ RÈGLES STRICTES — IMPÉRATIF :
 4. PROMPTS — contraintes des prompts d'étape :
    — TOUS les prompts en français
    — ZÉRO code (pas de Python, JS, batch, subprocess, os.system, etc.)
+   — Chaque prompt d'étape doit indiquer explicitement QUEL outil appeler et AVEC QUELS arguments exacts (ex: ask_user(question="...", type="text"))
+   — Toute étape doit se terminer par l'appel step_done() SANS aucun argument
+   — ask_user n'accepte QUE les arguments question (string) et type ("text"|"confirm"|"choice") ; ne jamais ajouter d'autres arguments
+   — Si une étape pose des questions, interdire explicitement la lecture de fichiers dans le prompt
    — Pour les workflows de rédaction :
      * l'étape de rédaction doit lire `_progress.md` pour savoir quelle section écrire
      * doit mettre à jour `_progress.md` après chaque section

@@ -34,7 +34,13 @@ RÈGLES STRICTES :
 4. Toutes les étapes : "agentId": "builder" (jamais "planner").
 5. Prompts en français, sans code.
 6. Transitions cohérentes : chaque goto pointe vers une étape existante ou "$done".
-7. Réponds UNIQUEMENT avec le JSON brut modifié."""
+7. Réponds UNIQUEMENT avec le JSON brut modifié.
+
+RÈGLES ANTI-ERREURS DE TOOL-CALLING (CRITIQUES) :
+8. Chaque prompt d'étape doit indiquer explicitement QUEL outil appeler et AVEC QUELS arguments exacts (ex: ask_user(question="...", type="text")).
+9. Toute étape doit se terminer par l'appel step_done() SANS aucun argument.
+10. ask_user n'accepte QUE les arguments question (string) et type ("text"|"confirm"|"choice") ; ne jamais ajouter d'autres arguments.
+11. Si une étape pose des questions, interdire explicitement la lecture de fichiers dans le prompt."""
 
 
 @dataclass
