@@ -22,7 +22,6 @@ interface WorkflowCanvasProps {
   selectedStepId: string | null;
   onSelectStep: (stepId: string | null) => void;
   onNodesChange: OnNodesChange;
-  onNodeDragStop?: (event: unknown, node: Node, nodes: Node[]) => void;
   onDropTemplate?: (templateId: string, position: { x: number; y: number }) => void;
   onConnect?: (connection: Connection) => void;
 }
@@ -78,7 +77,6 @@ function CanvasInner({
   workflow,
   onSelectStep,
   onNodesChange,
-  onNodeDragStop,
   onDropTemplate,
   onConnect,
 }: Omit<WorkflowCanvasProps, "onSelectStep"> & { onSelectStep: (stepId: string | null) => void }) {
@@ -138,7 +136,6 @@ function CanvasInner({
       onNodeClick={onNodeClick}
       onPaneClick={onPaneClick}
       onNodesChange={onNodesChange}
-      onNodeDragStop={onNodeDragStop}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onConnect={onConnect}

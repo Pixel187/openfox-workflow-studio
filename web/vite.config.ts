@@ -2,14 +2,15 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// Proxy /api vers le backend FastAPI (port 8765) en développement.
+// Proxy /api vers le backend FastAPI en développement.
+// VITE_API_TARGET permet d'isoler le backend E2E (playwright) sur un autre port.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    port: 5173,
+    port: Number(process.env.VITE_PORT || 5173),
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8765",
+        target: process.env.VITE_API_TARGET || "http://127.0.0.1:8765",
         changeOrigin: true,
       },
     },
@@ -18,5 +19,6 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    exclude: ["e2e/**", "node_modules/**", "dist/**"],
   },
 });

@@ -1,6 +1,7 @@
-import { useCallback, useRef } from "react";
-import type { Node, OnNodesChange } from "@xyflow/react";
+import { useCallback } from "react";
+import type { OnNodesChange } from "@xyflow/react";
 import { useWorkflowStore } from "../store/workflowStore";
+import { useDebouncedLayout } from "../hooks/useDebouncedLayout";
 import WorkflowCanvas from "./WorkflowCanvas";
 import StepInspector from "./StepInspector";
 import ValidationPanel from "./ValidationPanel";
@@ -27,7 +28,7 @@ export default function WorkflowEditor({ workflowId, onBack, onSaved }: Workflow
   const addStep = useWorkflowStore((s) => s.addStep);
   const connectSteps = useWorkflowStore((s) => s.connectSteps);
   const updateNodePositions = useWorkflowStore((s) => s.updateNodePositions);
-  const layoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleLayout = useDebouncedLayout(workflow?.metadata.id ?? null);
 
   const onConnect = useCallback(
     (connection: { source: string | null; target: string | null }) => {
@@ -63,29 +64,10 @@ export default function WorkflowEditor({ workflowId, onBack, onSaved }: Workflow
         .map((c) => ({ id: c.id, position: c.position! }));
       if (positions.length > 0) {
         updateNodePositions(positions);
-        // Persistance des positions : debounce 500ms après chaque changement
-        if (layoutTimer.current) clearTimeout(layoutTimer.current);
-        layoutTimer.current = setTimeout(() => {
-          if (workflow) {
-            api.putLayout(workflow.metadata.id, { nodes: positions }).catch(() => {});
-          }
-        }, 500);
+        scheduleLayout(positions);
       }
     },
-    [updateNodePositions, workflow],
-  );
-
-  const onNodeDragStop = useCallback(
-    (_event: unknown, node: Node) => {
-      if (workflow) {
-        api
-          .putLayout(workflow.metadata.id, {
-            nodes: [{ id: node.id, position: node.position }],
-          })
-          .catch(() => {});
-      }
-    },
-    [workflow],
+    [updateNodePositions, scheduleLayout],
   );
 
   const exportJson = () => {
@@ -180,7 +162,6 @@ export default function WorkflowEditor({ workflowId, onBack, onSaved }: Workflow
             selectedStepId={selectedStepId}
             onSelectStep={setSelectedStep}
             onNodesChange={onNodesChange}
-            onNodeDragStop={onNodeDragStop}
             onDropTemplate={onDropTemplate}
             onConnect={onConnect}
           />

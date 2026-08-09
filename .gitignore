@@ -13,6 +13,9 @@ htmlcov/
 # Frontend
 web/node_modules/
 web/dist/
+web/test-results/
+web/playwright-report/
+web/.e2e-workflows/
 
 # Données générées (recréées par le seed au premier lancement)
 agent_base/*.json

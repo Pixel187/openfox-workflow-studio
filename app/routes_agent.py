@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from app import config
 from app.agent_proposer import AgentProposer
+from app.fake_proposer import FakeProposer
 from app.ollama_client import OllamaClient
 from app.validation import validate_workflow
 from app.workflow_store import (
@@ -48,7 +49,7 @@ _PROPOSALS: dict[str, dict[str, Any]] = {}
 _PROPOSAL_TTL_S = 3600
 _lock = asyncio.Lock()
 
-_proposer = AgentProposer()
+_proposer = FakeProposer() if config.settings.fake_proposer else AgentProposer()
 _ollama = OllamaClient()
 
 
@@ -118,6 +119,15 @@ async def propose(req: ProposeRequest) -> dict[str, Any]:
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if not result.success and req.model and req.model != config.settings.ollama_model:
+        result = _proposer.propose(
+            workflow,
+            scope=req.scope,
+            instruction=req.instruction,
+            step_id=req.step_id,
+            model=config.settings.ollama_model,
+        )
 
     if not result.success:
         status = 422

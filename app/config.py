@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # Serveur
     port: int = 8765
 
+    # Tests E2E : proposer déterministe sans Ollama (FAKE_PROPOSER=1)
+    fake_proposer: bool = False
+
     @property
     def workflows_dir(self) -> Path:
         """Répertoire des workflows OpenFox : %APPDATA%\\openfox\\workflows."""

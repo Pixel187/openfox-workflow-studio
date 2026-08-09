@@ -85,6 +85,39 @@ class _FakeOllama:
         return ["mistral-small3.2", "qwen2.5:32b"]
 
 
+class _RecordingProposer:
+    """Faux proposer qui enregistre les modèles appelés (fallback P2).
+
+    Échoue si le modèle demandé est dans `fail_for`, réussit sinon.
+    """
+
+    def __init__(self, default_model: str, fail_for: set[str | None] | None = None) -> None:
+        self.default_model = default_model
+        self.fail_for = fail_for or set()
+        self.calls: list[str | None] = []
+
+    def propose(self, workflow, scope, instruction, step_id=None, model=None):
+        from app.agent_proposer import Proposal
+
+        self.calls.append(model)
+        if model in self.fail_for:
+            return Proposal(
+                success=False,
+                proposed=None,
+                validation_errors=["goto 's99' vers une étape inconnue"],
+                error="Proposition invalide",
+            )
+        proposed = _proposed_workflow()
+        return Proposal(
+            success=True,
+            proposed=proposed,
+            diff={"added": [], "removed": [], "modified": ["s1"]},
+            original_vars=["workdir"],
+            lost_vars=[],
+            preserves_vars=True,
+        )
+
+
 @pytest.fixture()
 def fake_agent(monkeypatch) -> None:
     """Remplace le proposer et le client Ollama par des faux."""
@@ -149,6 +182,109 @@ def test_propose_returns_proposal_id(client: TestClient, fake_agent) -> None:
     assert payload["proposed"]["steps"][0]["prompt"].startswith("Fais le travail")
     assert payload["preserves_vars"] is True
     assert payload["validation"]["valid"] is True
+
+
+def test_propose_fallback_retries_with_default_model(
+    client: TestClient, monkeypatch
+) -> None:
+    """P2 : une proposition invalide avec un modèle non-défaut retente le modèle par défaut."""
+    import app.routes_agent as routes_agent
+    from app import config
+
+    _create_demo(client)
+    recording = _RecordingProposer(
+        default_model=config.settings.ollama_model, fail_for={"qwen2.5:32b"}
+    )
+    monkeypatch.setattr(routes_agent, "_proposer", recording)
+    monkeypatch.setattr(routes_agent, "_ollama", _FakeOllama())
+
+    response = client.post(
+        "/api/agent/propose",
+        json={
+            "workflow_id": "demo",
+            "scope": "workflow",
+            "instruction": "Ajoute",
+            "model": "qwen2.5:32b",
+        },
+    )
+    assert response.status_code == 200
+    assert recording.calls == ["qwen2.5:32b", config.settings.ollama_model]
+    assert response.json()["validation"]["valid"] is True
+
+
+def test_propose_fallback_fails_when_default_also_invalid(
+    client: TestClient, monkeypatch
+) -> None:
+    """P2 : si le modèle par défaut échoue aussi, on retourne 422 (pas de boucle infinie)."""
+    import app.routes_agent as routes_agent
+    from app import config
+
+    _create_demo(client)
+    recording = _RecordingProposer(
+        default_model=config.settings.ollama_model,
+        fail_for={"qwen2.5:32b", config.settings.ollama_model},
+    )
+    monkeypatch.setattr(routes_agent, "_proposer", recording)
+    monkeypatch.setattr(routes_agent, "_ollama", _FakeOllama())
+
+    response = client.post(
+        "/api/agent/propose",
+        json={
+            "workflow_id": "demo",
+            "scope": "workflow",
+            "instruction": "Ajoute",
+            "model": "qwen2.5:32b",
+        },
+    )
+    assert response.status_code == 422
+    assert recording.calls == ["qwen2.5:32b", config.settings.ollama_model]
+
+
+def test_propose_fallback_no_retry_when_model_is_default(
+    client: TestClient, monkeypatch
+) -> None:
+    """P2 : pas de retry quand le modèle demandé est déjà le modèle par défaut."""
+    import app.routes_agent as routes_agent
+    from app import config
+
+    _create_demo(client)
+    default = config.settings.ollama_model
+    recording = _RecordingProposer(default_model=default, fail_for={default})
+    monkeypatch.setattr(routes_agent, "_proposer", recording)
+    monkeypatch.setattr(routes_agent, "_ollama", _FakeOllama())
+
+    response = client.post(
+        "/api/agent/propose",
+        json={
+            "workflow_id": "demo",
+            "scope": "workflow",
+            "instruction": "Ajoute",
+            "model": default,
+        },
+    )
+    assert response.status_code == 422
+    assert recording.calls == [default]
+
+
+def test_propose_fallback_no_retry_without_model(
+    client: TestClient, monkeypatch
+) -> None:
+    """P2 : sans modèle demandé, le défaut est déjà utilisé — pas de retry."""
+    import app.routes_agent as routes_agent
+    from app import config
+
+    _create_demo(client)
+    default = config.settings.ollama_model
+    recording = _RecordingProposer(default_model=default, fail_for={None})
+    monkeypatch.setattr(routes_agent, "_proposer", recording)
+    monkeypatch.setattr(routes_agent, "_ollama", _FakeOllama())
+
+    response = client.post(
+        "/api/agent/propose",
+        json={"workflow_id": "demo", "scope": "workflow", "instruction": "Ajoute"},
+    )
+    assert response.status_code == 422
+    assert recording.calls == [None]
 
 
 def test_propose_unknown_workflow_404(client: TestClient, fake_agent) -> None:
